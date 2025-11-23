@@ -21,7 +21,7 @@ git-dev-usage-close-buffers	git-dev.txt	/*git-dev-usage-close-buffers*
 git-dev-usage-open	git-dev.txt	/*git-dev-usage-open*
 git-dev-usage-parse	git-dev.txt	/*git-dev-usage-parse*
 git-dev-usage-persist-repository	git-dev.txt	/*git-dev-usage-persist-repository*
-git-dev-usage-telescope	git-dev.txt	/*git-dev-usage-telescope*
+git-dev-usage-pickers	git-dev.txt	/*git-dev-usage-pickers*
 git-dev-usage-toggle-ui	git-dev.txt	/*git-dev-usage-toggle-ui*
 git-dev-xdg-handling	git-dev.txt	/*git-dev-xdg-handling*
 git-dev.txt	git-dev.txt	/*git-dev.txt*

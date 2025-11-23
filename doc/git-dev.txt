@@ -1,4 +1,4 @@
-*git-dev.txt*           For NVIM v0.8.0           Last change: 2025 October 23
+*git-dev.txt*           For NVIM v0.8.0          Last change: 2025 November 23
 
 ==============================================================================
 Table of Contents                                  *git-dev-table-of-contents*
@@ -11,7 +11,7 @@ Table of Contents                                  *git-dev-table-of-contents*
   - Clean All                                        |git-dev-usage-clean-all|
   - Parse                                                |git-dev-usage-parse|
   - Toggle UI                                        |git-dev-usage-toggle-ui|
-  - Telescope                                        |git-dev-usage-telescope|
+  - Pickers                                            |git-dev-usage-pickers|
 2. Options                                                   |git-dev-options|
 3. URL Parsing                                           |git-dev-url-parsing|
   - Supported URLs                        |git-dev-url-parsing-supported-urls|
@@ -177,19 +177,24 @@ PARAMETERS ~
     for this call.
 
 
-TELESCOPE                                            *git-dev-usage-telescope*
+PICKERS                                                *git-dev-usage-pickers*
+
+Supports `mini.pick`, `snacks`, `telescope` and a fallback to `vim.ui.select`.
+By default, it will use the first picker provider it finds. See `pickers` in
+|git-dev-options| below.
 
 
-RECENT REPOSITORIES ~
+HISTORY ~
 
-Command: `GitDevRecents` Telescope: `Telescope git_dev recents`
+API: `require("git-dev").pickers.history(local_opts)` Command: `GitDevHistory`
 
-Revisit previously opened repositories via a telescope extension.
+A picker for previously opened repositories.
 
 Opened repositories are tracked in a simple single file KV store. Its only
-purpose (currently) is to be queried by the telescope extension for a
-convenient way to re-open previously opened repositories. See `history` in
-|git-dev-options| below.
+purpose (currently) is to be queried by the history picker for a convenient way
+to re-open previously opened repositories.
+
+See `history` in |git-dev-options| below.
 
 
 ==============================================================================
@@ -295,7 +300,7 @@ convenient way to re-open previously opened repositories. See `history` in
         ---@type "always"|"never"|"current"
         delete_repo_dir = "current",
       },
-      -- XDG handling of `nvim-getdev` URIs.
+      -- XDG handling of `nvim-gitdev` URIs.
       -- Requires: `xdg-mime` and `xdg-open`.
       xdg_handler = {
         enabled = false,
@@ -307,6 +312,40 @@ convenient way to re-open previously opened repositories. See `history` in
         script = {
           path = vim.fn.expand "~/.local/bin/git-dev-open",
           content = '#!/usr/bin/env sh\nnvim -c GitDevXDGHandle\\ "$@"',
+        },
+      },
+      -- Picker configuration
+      ---@type GitDevPickerOpts
+      pickers = {
+        ---Nil for auto detection.
+        type = nil,
+        ---A configuration for the `history` picker
+        history = {
+          separator = {
+            text = " │ ",
+            hl_group = "WinSeparator",
+          },
+          entry = {
+            -- Defines the width ratios of `repo_utl`, `ref` and `selected_path`
+            -- in the picker's results / entries buffer. Setting a `width` below
+            -- will override the ratio defined for the entry part.
+            ratios = { 5, 2, 3 },
+            repo_url = {
+              -- Fixed width.
+              -- If `nil`, it will be determined by window width and the ratios
+              -- array above.
+              width = nil,
+              hl_group = "String",
+            },
+            ref = {
+              width = nil,
+              hl_group = "Tag",
+            },
+            selected_path = {
+              width = nil,
+              hl_group = "LineNr",
+            },
+          },
         },
       },
       -- More verbosity.
