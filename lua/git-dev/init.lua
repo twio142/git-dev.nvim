@@ -8,6 +8,8 @@ M.config = {
   -- If `true`, it will create an auto command for opened repositories
   -- to delete the local directory when nvim exists.
   ephemeral = true,
+  -- Whether to confirm before deleting a repository that has pending changes.
+  confirm_on_pending_before_delete = false,
   -- Set buffers of opened repositories to be read-only and unmodifiable.
   read_only = true,
   -- Whether / how to CD into opened repository.
@@ -166,7 +168,66 @@ local cd_func = {
   none = function(_, _) end,
 }
 
+local function has_pending_changes(repo_dir)
+  if not M.config.confirm_on_pending_before_delete then
+    return false
+  end
+
+  -- Check for uncommitted changes
+  local uncommitted_output = vim.fn.system {
+    M.config.git.command,
+    "-C",
+    repo_dir,
+    "status",
+    "--porcelain",
+  }
+  local has_uncommitted = uncommitted_output and uncommitted_output ~= ""
+
+  -- Check for unpushed commits
+  local has_unpushed = false
+  -- Try to get ahead count from upstream if set
+  local upstream_ahead_output = vim.fn.system {
+    M.config.git.command,
+    "-C",
+    repo_dir,
+    "rev-list",
+    "--count",
+    "@{u}..HEAD",
+  }
+  local count = tonumber(upstream_ahead_output) or 0
+  if count > 0 then
+    has_unpushed = true
+  else
+    -- If no upstream or ahead count is 0, check for local-only commits not on any remote
+    local local_only_output = vim.fn.system {
+      M.config.git.command,
+      "-C",
+      repo_dir,
+      "rev-list",
+      "--count",
+      "HEAD",
+      "--not",
+      "--remotes",
+    }
+    count = tonumber(local_only_output) or 0
+    has_unpushed = count > 0
+  end
+
+  return has_uncommitted or has_unpushed
+end
+
 local function delete_repo_dir(repo_dir)
+  if has_pending_changes(repo_dir) then
+    local choice = vim.fn.confirm(
+      "You have pending changes in this repo. Delete anyway?",
+      "&Yes\n&No (keep the directory)",
+      2
+    )
+    if choice ~= 1 then
+      return false -- Indicate deletion was aborted
+    end
+  end
+
   local is_deleted = vim.fn.delete(repo_dir, "rf")
   local msg
   if is_deleted == 0 then
@@ -175,6 +236,7 @@ local function delete_repo_dir(repo_dir)
     msg = "Not found: " .. repo_dir
   end
   M.ui:print(msg)
+  return true
 end
 
 local augroup = vim.api.nvim_create_augroup("GitDev", { clear = true })
@@ -269,7 +331,7 @@ M.open = function(repo, ref, opts)
       ui:print "Ephemeral mode: creating autocmd to cleanup when nvim exits..."
       -- Delete repository directory when vim exits.
       repo_ctx.ephemeral_autocmd_id = vim.api.nvim_create_autocmd(
-        { "VimLeavePre" },
+        { "ExitPre" },
         {
           group = augroup,
           callback = function()
@@ -445,15 +507,7 @@ M.clean = function(repo, ref, opts)
     return
   end
 
-  if config.clean.close_buffers then
-    if not M.close_buffers(repo_ctx.repo, repo_ctx.ref) then
-      return
-    end
-  end
-
-  if vim.uv.cwd() == repo_ctx.repo_dir then
-    vim.fn.chdir(vim.env.PWD)
-  end
+  local should_chdir = vim.uv.cwd() == repo_ctx.repo_dir
 
   -- If repository is marked as ephemeral, remove its directory.
   if
@@ -461,7 +515,13 @@ M.clean = function(repo, ref, opts)
     or config.clean.delete_repo_dir == "current"
       and repo_ctx.ephemeral_autocmd_id
   then
-    delete_repo_dir(repo_ctx.repo_dir)
+    if not delete_repo_dir(repo_ctx.repo_dir) then
+      return
+    end
+  end
+
+  if should_chdir then
+    vim.fn.chdir(vim.env.PWD)
   end
 
   -- Delete autocmds
