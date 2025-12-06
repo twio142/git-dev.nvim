@@ -62,10 +62,9 @@ XDG.enable = function(opts)
     "xdg-mime query default " .. desktop_entry.mime_type,
     function(code)
       if code ~= 0 then
-        vim.api.nvim_echo(
-          { { "Failed to get default handler" } },
-          true,
-          { err = true }
+        vim.notify(
+          "Failed to get default handler. Missing xdg-mime?",
+          vim.log.levels.WARN
         )
       end
     end
@@ -78,10 +77,9 @@ XDG.enable = function(opts)
           "xdg-mime default " .. entry_name .. " " .. desktop_entry.mime_type,
           function(code)
             if code ~= 0 then
-              vim.api.nvim_echo(
-                { { "Failed to set default handler" } },
-                true,
-                { err = true }
+              vim.notify(
+                "Failed to get default handler. Missing xdg-mime?",
+                vim.log.levels.WARN
               )
             end
           end
